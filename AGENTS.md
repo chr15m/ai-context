@@ -27,6 +27,13 @@
   - Only handle the most essential errors relevant to the codebase.
 - IMPORTANT: if the task is unreasonable of infeasible, or if any of the tests are incorrect, please tell me.
 - Do not hard-code any test cases. Tell me if the problem is unreasonable instead of hardcoding passing tests.
+- Never clean up any code unless the user asks you to.
+
+# Debugging
+
+- To confirm a hypothesis about a bug always insert debugging statements.
+- Ask the user to tell you what is printed from debugging statements to get insight.
+- Never remove debugging statements unless the user asks you to clean up.
 
 # Comment guidelines
 
