@@ -33,12 +33,19 @@
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
+# Modifying code
+
+- Use the quoted code as the source of truth about the current state of the code in a file.
+- Do not assume your previous patches have been applied.
+
 # Debugging process
 
 - Examine the program output or test output and the source code.
 - Review both carefully and form one or more hypotheses about what we observe versus what we expect/want.
 - Come up with debugging statements or other methods can we use to test the hypotheses.
 - Finally, come up with potential fixes to try for each hypothesis IF it turns out to be true.
+
+If the user asks you to follow "Debugging process" perform the steps above and give answers in plain english.
 
 # --- DEBUGGING (CRITICAL RULES) ---
 
