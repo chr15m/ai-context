@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# .aider.conf.yml
+# lint-cmd: "clojure: ai-lint"
+
+echo "Running ai-lint-cljs running on $1"
+
+TMPFILE=$(mktemp)
+parinfer "$1" > "$TMPFILE"
+
+if ! diff -q "$1" "$TMPFILE" >/dev/null 2>&1; then
+  echo "Fixed $1 parens with parinfer indent mode"
+  cp "$1" "$1.pre-lint"
+  echo "Backup in $1.pre-lint"
+  cp "$TMPFILE" "$1"
+fi
+
+rm "$TMPFILE"
+
+clj-kondo --lint "$1"

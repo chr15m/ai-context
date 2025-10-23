@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+var fs = require('fs');
+var parinfer = require('parinfer');
+if (process.argv.length == 3) {
+  process.stdout.write(parinfer.indentMode(fs.readFileSync(process.argv[2]).toString()).text);
+} else {
+  console.log("Usage: parinfer filename.clj[s]");
+}
