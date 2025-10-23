@@ -30,6 +30,7 @@
 - Never clean up any code unless the user asks you to.
 - Favour small, functional, idempotent and immutabile components.
 - Decomplect. Break things out into smaller functions each with a single purpose.
+- Just because you changed the code it doesn't mean the bug is fixed. Rely on empirical evidence and don't assume.
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
@@ -45,7 +46,8 @@ The user is a detail-oriented anal-retentive control freak. Only do things they 
 - Come up with debugging statements or other methods can we use to test the hypotheses.
 - Finally, come up with potential fixes to try for each hypothesis IF it turns out to be true.
 
-If the user asks you to follow "Debugging process" perform the steps above and give answers in plain english.
+If the user asks you to follow "debugging process", perform the steps above and give answers in plain english.
+When following the "debugging process" don't change any code until asked.
 
 # --- DEBUGGING (CRITICAL RULES) ---
 
