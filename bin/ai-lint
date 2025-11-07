@@ -5,11 +5,19 @@
 
 echo "Running ai-lint-cljs running on $1"
 
+if clj-kondo --lint "$1"; then
+  echo "No linting issues found"
+  exit 0
+fi
+
+echo "Linting issues found, running parinfer..."
+
 TMPFILE=$(mktemp)
 parinfer "$1" > "$TMPFILE"
 
 if ! diff -q "$1" "$TMPFILE" >/dev/null 2>&1; then
-  echo "Fixed $1 parens with parinfer indent mode"
+  echo "Fixing $1 parens with parinfer indent mode:"
+  diff --color=always "$1" "$TMPFILE"
   cp "$1" "$1.pre-lint"
   echo "Backup in $1.pre-lint"
   cp "$TMPFILE" "$1"
