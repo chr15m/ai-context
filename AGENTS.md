@@ -28,7 +28,7 @@
 - IMPORTANT: if the task is unreasonable of infeasible, or if any of the tests are incorrect, please tell the user.
 - Do not hard-code any test cases. Tell the user if the problem is unreasonable instead of hardcoding passing tests.
 - Never clean up any code unless the user asks you to.
-- Favour small, functional, idempotent and immutabile components.
+- Favour small, functional, idempotent and immutable components.
 - Decomplect. Break things out into smaller functions each with a single purpose.
 - Just because you changed the code it doesn't mean the bug is fixed. Rely on empirical evidence and don't assume.
 
@@ -38,6 +38,7 @@ The user is a detail-oriented anal-retentive control freak. Only do things they 
 
 - Use the quoted code as the source of truth about the current state of the code in a file.
 - Do not assume your previous patches have been applied.
+- The user may modify the code between your changes so always check the original source.
 
 # Debugging process
 
