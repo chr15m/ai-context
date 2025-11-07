@@ -17,3 +17,18 @@
               (assoc-in [:ui :busy :saving] false)
               (assoc :saved-beat (:beat @state))))
   ```
+
+### Code Indentation Before Evaluation
+
+Consistent indentation is crucial to help the bracket balancer.
+
+```clojure
+;; ❌
+(defn my-function [x]
+(+ x 2))
+
+;; ✅
+(defn my-function [x]
+  (+ x 2))
+```
+
