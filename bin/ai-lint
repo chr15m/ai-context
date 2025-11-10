@@ -21,8 +21,7 @@ if ! diff -q "$1" "$TMPFILE" >/dev/null 2>&1; then
   cp "$1" "$1.pre-lint"
   echo "Backup in $1.pre-lint"
   cp "$TMPFILE" "$1"
+  clj-kondo --lint "$1"
 fi
 
 rm "$TMPFILE"
-
-clj-kondo --lint "$1"
