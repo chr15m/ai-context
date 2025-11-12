@@ -31,6 +31,7 @@
 - Favour small, functional, idempotent and immutable components.
 - Decomplect. Break things out into smaller functions each with a single purpose.
 - Just because you changed the code it doesn't mean the bug is fixed. Rely on empirical evidence and don't assume.
+- Keep existing comments unless asked to modify them.
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
