@@ -129,5 +129,6 @@ The user will then run this code and give you the response. You can also write m
 - Minimal deps
 - Under-engineering
 - Root-cause fixes
+- KISS
 - Epistemic humility 👈️
 
