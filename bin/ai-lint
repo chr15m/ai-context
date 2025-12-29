@@ -5,7 +5,10 @@
 
 echo "Running ai-lint-cljs running on $1"
 
-if clj-kondo --lint "$1"; then
+clj-kondo --lint "$1"
+KONDO_EXIT=$?
+
+if [ $KONDO_EXIT -eq 0 ]; then
   echo "No linting issues found"
   exit 0
 fi
@@ -22,6 +25,8 @@ if ! diff -q "$1" "$TMPFILE" >/dev/null 2>&1; then
   echo "Backup in $1.pre-lint"
   cp "$TMPFILE" "$1"
   clj-kondo --lint "$1"
+  KONDO_EXIT=$?
 fi
 
 rm "$TMPFILE"
+exit $KONDO_EXIT
