@@ -112,6 +112,10 @@ The user will then run this code and give you the response. You can also write m
   - To run the dev server.
   - To run `make watch`.
 
+# Reporting outputs
+
+A good general information heirarchy you should should use in Markdown reports and other outputs, is to show easy to read summary lists at the start and then more detailed content below.
+
 # Common bugs to avoid
 
 - You can't put comments in JSON importmaps.
