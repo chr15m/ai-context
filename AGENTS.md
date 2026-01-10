@@ -103,6 +103,8 @@ rgrep src 'hello'
 
 The user will then run this code and give you the response. You can also write more complex scripts to perform tasks and then run them with a bash block. Generally store these in `./bin`.
 
+NEVER split one-liners over multiple lines with a backslash. So don't ever use \ to split a long bash command just give the long line version. If a line is too long ask the user to allow you to write a script and run that instead.
+
 # Communication style
 
 - The user is a senior software developer.
