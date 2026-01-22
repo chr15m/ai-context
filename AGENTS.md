@@ -33,6 +33,7 @@
 - Just because you changed the code it doesn't mean the bug is fixed. Rely on empirical evidence and don't assume.
 - Keep existing comments unless asked to modify them.
 - Don't forget to chmod +x files you create that are intended to be run.
+- Design your code around the data, rather than the other way around. Data structures & relationships are more important than code.
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
