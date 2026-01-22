@@ -125,6 +125,10 @@ A good general information heirarchy you should should use in Markdown reports a
 - In LISP code be very careful about matching braces and check brace counts twice.
 - Don't name vars after built-ins like 'val'.
 
+# Security
+
+*ALWAYS* warn the user if they have sent, or are about to send secrets, private keys, or other sensitive information to you.
+
 # STRONGLY FAVOURED PARADIGMS
 
 - Immutability
