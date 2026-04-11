@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""Remote control a running Chromium instance via CDP."""
+
+import argparse
+import sys
+
+CDP_URL = "http://localhost:9222"
+
+def _get_page():
+    from playwright.sync_api import sync_playwright
+    pw = sync_playwright().start()
+    try:
+        browser = pw.chromium.connect_over_cdp(CDP_URL)
+    except Exception as e:
+        print(f"Could not connect to Chromium on {CDP_URL}", file=sys.stderr)
+        sys.exit(1)
+    contexts = browser.contexts
+    if contexts and contexts[0].pages:
+        for page in contexts[0].pages:
+            try:
+                if page.evaluate("document.visibilityState") == "visible":
+                    return page
+            except Exception:
+                pass
+        return contexts[0].pages[-1]
+    return browser.contexts[0].new_page()
+
+def snapshot(page):
+    script = """
+    (startId) => {
+        let idCounter = startId;
+        const lines = [];
+        const interactives = new Set(['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A']);
+        const interactiveRoles = new Set(
+            ['button', 'checkbox', 'radio', 'listbox', 'option', 'switch', 'textbox']
+        );
+
+        function isInteractive(el) {
+            if (interactives.has(el.tagName)) return true;
+            if (el.hasAttribute('role') &&
+                interactiveRoles.has(el.getAttribute('role'))) return true;
+            return false;
+        }
+
+        function isVisible(el) {
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+                return false;
+            }
+            // Note: We don't strictly check getBoundingClientRect() > 0 here because 
+            // elements with 'display: contents' or zero-height flex/grid containers 
+            // can have 0 dimensions but still contain fully visible children.
+            return true;
+        }
+
+        function walk(node) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                if (!isVisible(node)) return;
+                if (isInteractive(node)) {
+                    if (!node.hasAttribute('data-agent-id')) {
+                        node.setAttribute('data-agent-id', idCounter++);
+                    }
+                    const id = node.getAttribute('data-agent-id');
+                    let label = node.getAttribute('aria-label') ||
+                                node.placeholder || node.value || '';
+                    if (!label && node.id) {
+                        const labelEl = document.querySelector(
+                            `label[for="${node.id}"]`
+                        );
+                        if (labelEl) label = labelEl.innerText;
+                    }
+                    if (!label) {
+                        const parent = node.closest('.geS5n');
+                        if (parent) {
+                            const titleEl = parent.querySelector('.M7eMe');
+                            if (titleEl) label = titleEl.innerText;
+                        }
+                    }
+                    if (!label) label = node.innerText || '';
+                    label = label.replace(/\\s+/g, ' ').trim().substring(0, 100);
+
+                    let desc = `[${id}] ${node.tagName.toLowerCase()}`;
+                    if (node.type && node.type !== node.tagName.toLowerCase())
+                        desc += `:${node.type}`;
+                    if (node.getAttribute('role'))
+                        desc += ` role=${node.getAttribute('role')}`;
+                    if (node.checked) desc += ` checked=true`;
+                    else if (node.getAttribute('aria-checked'))
+                        desc += ` checked=${node.getAttribute('aria-checked')}`;
+                    if (node.selected) desc += ` selected=true`;
+                    else if (node.getAttribute('aria-selected'))
+                        desc += ` selected=${node.getAttribute('aria-selected')}`;
+                    if ((node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') &&
+                        !['checkbox','radio','button','submit','reset'].includes(node.type)) {
+                        if (node.value) desc += ` value="${node.value}"`;
+                    }
+                    if (node.tagName === 'SELECT' && node.value)
+                        desc += ` value="${node.value}"`;
+                    desc += ` - "${label}"`;
+                    lines.push(desc);
+                    return;
+                } else {
+                    let directText = "";
+                    for (const child of node.childNodes) {
+                        if (child.nodeType === Node.TEXT_NODE)
+                            directText += child.textContent + " ";
+                    }
+                    const cleanText = directText.replace(/\\s+/g, ' ').trim();
+                    if (cleanText) lines.push(`> ${cleanText}`);
+                    for (const child of node.childNodes) walk(child);
+                    if (node.shadowRoot) {
+                        for (const child of node.shadowRoot.childNodes) walk(child);
+                    }
+                }
+            }
+        }
+
+        walk(document.body);
+        return { text: lines.join('\\n'), nextId: idCounter };
+    }
+    """
+    page.wait_for_timeout(1000)
+    
+    all_lines = []
+    current_id = 1
+    
+    for frame in page.frames:
+        if 'about:blank' in frame.url:
+            continue
+        try:
+            result = frame.evaluate(script, current_id)
+            if result and result.get('text'):
+                text = result['text'].strip()
+                if text:
+                    if len(page.frames) > 1:
+                        all_lines.append(f"--- FRAME: {frame.url} ---")
+                    all_lines.append(text)
+            if result and result.get('nextId'):
+                current_id = result['nextId']
+        except Exception:
+            pass
+            
+    return '\n'.join(all_lines)
+
+def click(page, id_or_selector):
+    sel = f"[data-agent-id='{id_or_selector}']" \
+          if id_or_selector.isdigit() else id_or_selector
+    for frame in page.frames:
+        try:
+            loc = frame.locator(sel).first
+            if loc.count() > 0:
+                loc.click()
+                page.wait_for_timeout(500)
+                return
+        except Exception:
+            pass
+    print(f"Could not find element: {sel}", file=sys.stderr)
+
+def type_text(page, id_or_selector, text):
+    sel = f"[data-agent-id='{id_or_selector}']" \
+          if id_or_selector.isdigit() else id_or_selector
+    for frame in page.frames:
+        try:
+            loc = frame.locator(sel).first
+            if loc.count() > 0:
+                loc.click()
+                page.wait_for_timeout(100)
+                page.keyboard.press("Control+A")
+                page.keyboard.press("Backspace")
+                page.keyboard.type(text)
+                page.wait_for_timeout(200)
+                return
+        except Exception:
+            pass
+    print(f"Could not find element: {sel}", file=sys.stderr)
+
+def sleep(page, ms=1000):
+    page.wait_for_timeout(ms)
+
+def wait_for_network(page, timeout=10000):
+    page.wait_for_load_state("networkidle", timeout=timeout)
+
+def wait_for_element(page, selector, timeout=10000):
+    page.wait_for_selector(selector, timeout=timeout)
+
+def press_key(page, key):
+    page.keyboard.press(key)
+    page.wait_for_timeout(300)
+
+def evaluate_js(page, script):
+    return str(page.evaluate(script))
+
+def dump_text(page):
+    lines = []
+    for frame in page.frames:
+        if 'about:blank' in frame.url:
+            continue
+        try:
+            text = frame.evaluate("document.body.innerText")
+            if text and text.strip():
+                if len(page.frames) > 1:
+                    lines.append(f"--- FRAME: {frame.url} ---")
+                lines.append(text.strip())
+        except Exception:
+            pass
+    return '\n\n'.join(lines)
+
+def close_browser(page):
+    client = page.context.new_cdp_session(page)
+    client.send("Browser.close")
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Remote control a running Chromium instance via CDP."
+    )
+    parser.add_argument("--snapshot", action="store_true",
+                       help="Print a text snapshot of the current page.")
+    parser.add_argument("--dump", action="store_true",
+                       help="Dump the raw innerText of the page and all frames.")
+    parser.add_argument("--click", metavar="ID",
+                       help="Click an element by numeric ID or CSS selector.")
+    parser.add_argument("--type", nargs=2, metavar=("ID", "TEXT"),
+                       help="Type text into an element.")
+    parser.add_argument("--sleep", metavar="MS", type=int,
+                       help="Sleep for a number of milliseconds.")
+    parser.add_argument("--wait-network", action="store_true",
+                       help="Wait for network to be idle.")
+    parser.add_argument("--wait-element", metavar="SELECTOR",
+                       help="Wait for a CSS selector to appear.")
+    parser.add_argument("--press", metavar="KEY",
+                       help="Press a keyboard key (e.g. Enter, Tab).")
+    parser.add_argument("--js", metavar="SCRIPT",
+                       help="Evaluate JavaScript and print the result.")
+    parser.add_argument("--pw", metavar="COMMAND",
+                       help="Evaluate a Playwright page command chain (e.g. \".goto('https://example.com')\").")
+    parser.add_argument("--close", action="store_true",
+                       help="Close the browser.")
+    args = parser.parse_args()
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
+    page = _get_page()
+
+    if args.sleep is not None:
+        sleep(page, args.sleep)
+    if args.wait_network:
+        wait_for_network(page)
+    if args.wait_element:
+        wait_for_element(page, args.wait_element)
+        
+    if args.click:
+        click(page, args.click)
+    if args.type:
+        type_text(page, args.type[0], args.type[1])
+    if args.press:
+        press_key(page, args.press)
+    if args.js:
+        print(evaluate_js(page, args.js))
+    if args.pw:
+        res = eval(f"page{args.pw}")
+        if res is not None:
+            print(res)
+            
+    if args.dump:
+        print(dump_text(page))
+    if args.snapshot:
+        print(snapshot(page))
+        
+    if args.close:
+        close_browser(page)
+
+if __name__ == "__main__":
+    main()
