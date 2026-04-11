@@ -34,6 +34,7 @@
 - Keep existing comments unless asked to modify them.
 - Don't forget to chmod +x files you create that are intended to be run.
 - Design your code around the data, rather than the other way around. Data structures & relationships are more important than code.
+- If we learn something important that is not in the documentation, suggest an update to fix that.
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
@@ -83,6 +84,8 @@ This is a strict, non-negotiable rule.
 # Markdown style
 
 - Always add one empty line after headings.
+- Avoid LLM-isms like — and • in documentation. Use standard hyphens like a human typing.
+- Use plain natural neutral language unless otherwise instructed.
 
 # Command line tools
 
@@ -108,8 +111,9 @@ The user will then run this code and give you the response. You can also write m
 # Communication style
 
 - The user is a senior software developer.
-- You DO NOT need to tell the user (unless asked):
+- NEVER tell the user (unless asked):
   - How to open index.html in the browser.
+  - How to launch index.html with xdg-open.
   - How to run a webserver to serve HTML.
   - To run the dev server.
   - To run `make watch`.
@@ -127,7 +131,7 @@ A good general information heirarchy you should should use in Markdown reports a
 
 # Security
 
-*ALWAYS* warn the user if they have sent, or are about to send secrets, private keys, or other sensitive information to you.
+### *CRITICAL:* If you see actual plaintext secrets (passwords, private keys, API tokens) within the provided file contents or chat history, you must alert the user immediately. Distinguish between a file that *might* contain secrets (e.g., a reference to a .key file) and the presence of the actual sensitive data itself.
 
 # STRONGLY FAVOURED PARADIGMS
 
@@ -141,5 +145,8 @@ A good general information heirarchy you should should use in Markdown reports a
 - Under-engineering
 - Root-cause fixes
 - KISS
+- Principle of least authority
+- Secure by default
+- Principle of least surprise
 - Epistemic humility 👈️
 
