@@ -25,9 +25,9 @@ def _get_page():
         return contexts[0].pages[-1]
     return browser.contexts[0].new_page()
 
-def snapshot(page):
+def snapshot(page, show_classes=False):
     script = """
-    (startId) => {
+    ([startId, showClasses]) => {
         let idCounter = startId;
         const lines = [];
         const interactives = new Set(['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A']);
@@ -96,6 +96,12 @@ def snapshot(page):
                     }
                     if (node.tagName === 'SELECT' && node.value)
                         desc += ` value="${node.value}"`;
+                    if (node.id)
+                        desc += ` id="${node.id}"`;
+                    if (showClasses && node.className && typeof node.className === 'string') {
+                        const cls = node.className.replace(/\\s+/g, ' ').trim().substring(0, 50);
+                        if (cls) desc += ` class="${cls}"`;
+                    }
                     desc += ` - "${label}"`;
                     lines.push(desc);
                     return;
@@ -128,7 +134,7 @@ def snapshot(page):
         if 'about:blank' in frame.url:
             continue
         try:
-            result = frame.evaluate(script, current_id)
+            result = frame.evaluate(script, [current_id, show_classes])
             if result and result.get('text'):
                 text = result['text'].strip()
                 if text:
@@ -215,6 +221,8 @@ def main():
     )
     parser.add_argument("--snapshot", action="store_true",
                        help="Print a text snapshot of the current page.")
+    parser.add_argument("--classes", action="store_true",
+                       help="Include class attributes in the snapshot output.")
     parser.add_argument("--dump", action="store_true",
                        help="Dump the raw innerText of the page and all frames.")
     parser.add_argument("--click", metavar="ID",
@@ -265,7 +273,7 @@ def main():
     if args.dump:
         print(dump_text(page))
     if args.snapshot:
-        print(snapshot(page))
+        print(snapshot(page, show_classes=args.classes))
         
     if args.close:
         close_browser(page)
