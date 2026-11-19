@@ -235,6 +235,8 @@ def main():
     parser = argparse.ArgumentParser(
         description="Remote control a running Chromium instance via CDP."
     )
+    parser.add_argument("--check", action="store_true",
+                       help="Check if browser is running and connectable.")
     parser.add_argument("--snapshot", action="store_true",
                        help="Print a text snapshot of the current page.")
     parser.add_argument("--classes", action="store_true",
@@ -266,6 +268,11 @@ def main():
     args = parser.parse_args()
     if len(sys.argv) == 1:
         parser.print_help()
+        sys.exit(0)
+
+    if args.check:
+        _get_page()
+        print("OK")
         sys.exit(0)
 
     page = _get_page()
