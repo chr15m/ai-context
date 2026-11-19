@@ -211,6 +211,9 @@ def dump_text(page):
             pass
     return '\n\n'.join(lines)
 
+def screenshot(page, path):
+    page.screenshot(path=path)
+
 def close_browser(page):
     client = page.context.new_cdp_session(page)
     client.send("Browser.close")
@@ -241,6 +244,8 @@ def main():
                        help="Evaluate JavaScript and print the result.")
     parser.add_argument("--pw", metavar="COMMAND",
                        help="Evaluate a Playwright page command chain (e.g. \".goto('https://example.com')\").")
+    parser.add_argument("--screenshot", metavar="PATH",
+                       help="Save a screenshot of the current page to a file.")
     parser.add_argument("--close", action="store_true",
                        help="Close the browser.")
     args = parser.parse_args()
@@ -274,6 +279,8 @@ def main():
         print(dump_text(page))
     if args.snapshot:
         print(snapshot(page, show_classes=args.classes))
+    if args.screenshot:
+        screenshot(page, args.screenshot)
         
     if args.close:
         close_browser(page)
