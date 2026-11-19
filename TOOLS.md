@@ -11,6 +11,7 @@ Use these shell commands to accomplish specific tasks.
 
 `bremote --snapshot` - print a text snapshot of the current page (interactive elements get numeric IDs).
 `bremote --screenshot PATH` - save a screenshot of the current page to a file.
+`bremote --resize WIDTH HEIGHT` - resize window to width and height.
 `bremote --classes` - include class attributes in the snapshot output (use with --snapshot).
 `bremote --dump` - dump the raw innerText of the page and frames.
 `bremote --click ID` - click an element by numeric ID or CSS selector.

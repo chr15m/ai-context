@@ -211,6 +211,19 @@ def dump_text(page):
             pass
     return '\n\n'.join(lines)
 
+def resize(page, width, height):
+    client = page.context.new_cdp_session(page)
+    try:
+        client.send("Emulation.clearDeviceMetricsOverride")
+    except Exception:
+        pass
+    window_info = client.send("Browser.getWindowForTarget")
+    window_id = window_info["windowId"]
+    client.send("Browser.setWindowBounds", {
+        "windowId": window_id,
+        "bounds": {"width": width, "height": height, "windowState": "normal"}
+    })
+
 def screenshot(page, path):
     page.screenshot(path=path)
 
@@ -244,6 +257,8 @@ def main():
                        help="Evaluate JavaScript and print the result.")
     parser.add_argument("--pw", metavar="COMMAND",
                        help="Evaluate a Playwright page command chain (e.g. \".goto('https://example.com')\").")
+    parser.add_argument("--resize", nargs=2, metavar=("WIDTH", "HEIGHT"),
+                       type=int, help="Resize the viewport (width height).")
     parser.add_argument("--screenshot", metavar="PATH",
                        help="Save a screenshot of the current page to a file.")
     parser.add_argument("--close", action="store_true",
@@ -275,6 +290,8 @@ def main():
         if res is not None:
             print(res)
             
+    if args.resize:
+        resize(page, args.resize[0], args.resize[1])
     if args.dump:
         print(dump_text(page))
     if args.snapshot:
