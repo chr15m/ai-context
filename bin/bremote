@@ -189,6 +189,9 @@ def wait_for_network(page, timeout=10000):
 def wait_for_element(page, selector, timeout=10000):
     page.wait_for_selector(selector, timeout=timeout)
 
+def goto(page, url):
+    page.goto(url)
+
 def press_key(page, key):
     page.keyboard.press(key)
     page.wait_for_timeout(300)
@@ -237,6 +240,8 @@ def main():
     )
     parser.add_argument("--check", action="store_true",
                        help="Check if browser is running and connectable.")
+    parser.add_argument("--goto", metavar="URL",
+                       help="Navigate to a URL.")
     parser.add_argument("--snapshot", action="store_true",
                        help="Print a text snapshot of the current page.")
     parser.add_argument("--classes", action="store_true",
@@ -277,6 +282,8 @@ def main():
 
     page = _get_page()
 
+    if args.goto:
+        goto(page, args.goto)
     if args.sleep is not None:
         sleep(page, args.sleep)
     if args.wait_network:

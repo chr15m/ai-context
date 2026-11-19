@@ -10,6 +10,7 @@ Use these shell commands to accomplish specific tasks.
 ### `bremote` usage
 
 `bremote --check` - check if browser is running and connectable.
+`bremote --goto URL` - navigate to a URL.
 `bremote --snapshot` - print a text snapshot of the current page (interactive elements get numeric IDs).
 `bremote --screenshot PATH` - save a screenshot of the current page to a file.
 `bremote --resize WIDTH HEIGHT` - resize window to width and height.
