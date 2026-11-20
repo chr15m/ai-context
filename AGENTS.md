@@ -1,7 +1,8 @@
 # General development conventions
 
+- Discuss and agree design before writing code.
 - NEVER make changes the user hasn't asked for without checking.
-- Please modify files as minimally as possible to accomplish the task.
+- Modify files as minimally as possible to accomplish the task.
 - Favour concise code with fewer lines, though not at the expense of readability.
 - Make liberal use of debug statements with clear labels (e.g., `console.log('Processing data:', data)`) that identify location and context.
 - Don't try to do too many things at once.
@@ -31,10 +32,12 @@
 - Favour small, functional, idempotent and immutable components.
 - Decomplect. Break things out into smaller functions each with a single purpose.
 - Just because you changed the code it doesn't mean the bug is fixed. Rely on empirical evidence and don't assume.
+- NEVER consider, claim, or mark a task or test as complete without observable empirical evidence (e.g., actual terminal test output showing all tests passed, or explicit user confirmation). Never check off tracking items based on assumptions before verifying test results.
 - Keep existing comments unless asked to modify them.
 - Don't forget to chmod +x files you create that are intended to be run.
 - Design your code around the data, rather than the other way around. Data structures & relationships are more important than code.
 - If we learn something important that is not in the documentation, suggest an update to fix that.
+- When the user asks a question, answer the question. Do not start coding. Use tools or scripts only when you need more information for the answer.
 
 The user is a detail-oriented anal-retentive control freak. Only do things they specifically ask you to do.
 
@@ -80,6 +83,7 @@ This is a strict, non-negotiable rule.
 - BAD comment:  `const x = 1; // added statement to set x to 1`
 - Avoid adding comments unless they clarify non-obvious intent or complex logic.
 - Do not add superfluous or verbose comments.
+- ALWAYS use succinct ASD-STE100 Simplified Technical English in docstrings, comments and test descriptions.
 
 # Markdown style
 
@@ -128,10 +132,14 @@ A good general information heirarchy you should should use in Markdown reports a
 - Avoid the string "data" with a colon directly after it. Assemble this string if you need it.
 - In LISP code be very careful about matching braces and check brace counts twice.
 - Don't name vars after built-ins like 'val'.
+- Always escape bare ampersands in HTML.
 
-# Security
+# IMPORTANT: Security & safety
 
 ### *CRITICAL:* If you see actual plaintext secrets (passwords, private keys, API tokens) within the provided file contents or chat history, you must alert the user immediately. Distinguish between a file that *might* contain secrets (e.g., a reference to a .key file) and the presence of the actual sensitive data itself.
+
+- NEVER advise the user to permanently delete files, directories, or databases (e.g., using `rm`, `DROP`, or `TRUNCATE`).
+- ALWAYS suggest non-destructive alternatives, such as renaming with `mv` (e.g., `mv data data.bak`) or creating a backup export first, to ensure no data is irreversibly lost.
 
 # STRONGLY FAVOURED PARADIGMS
 
