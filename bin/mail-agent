@@ -1,0 +1,264 @@
+#!/usr/bin/env python3
+import argparse
+import email
+import html
+import imaplib
+import os
+import re
+import ssl
+import sys
+from email.header import decode_header
+from urllib.parse import unquote, urlsplit
+
+
+def get_connection():
+    imap_url = os.environ.get("IMAP_URL")
+    if not imap_url:
+        print("IMAP_URL environment variable is not set", file=sys.stderr)
+        sys.exit(1)
+    parsed = urlsplit(imap_url)
+    username = unquote(parsed.username or "")
+    password = unquote(parsed.password or "")
+    hostname = parsed.hostname
+    if not hostname or not username:
+        print("Invalid IMAP_URL URL", file=sys.stderr)
+        sys.exit(1)
+    ssl_context = ssl.create_default_context()
+    ssl_context.set_ciphers("DEFAULT@SECLEVEL=1")
+    imap = imaplib.IMAP4_SSL(hostname, ssl_context=ssl_context)
+    imap.login(username, password)
+    return imap
+
+
+def decode_mime(header_val):
+    if not header_val:
+        return ""
+    parts = decode_header(header_val)
+    decoded = []
+    for text, charset in parts:
+        if isinstance(text, bytes):
+            decoded.append(text.decode(charset or "utf-8", errors="replace"))
+        else:
+            decoded.append(str(text))
+    return "".join(decoded)
+
+
+def extract_body(msg):
+    text_parts = []
+    html_parts = []
+    if msg.is_multipart():
+        for part in msg.walk():
+            cd = str(part.get("Content-Disposition", ""))
+            if "attachment" in cd:
+                continue
+            payload = part.get_payload(decode=True)
+            if not payload:
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            decoded_text = payload.decode(charset, errors="replace")
+            if part.get_content_type() == "text/plain":
+                text_parts.append(decoded_text)
+            elif part.get_content_type() == "text/html":
+                html_parts.append(decoded_text)
+    else:
+        payload = msg.get_payload(decode=True)
+        if payload:
+            charset = msg.get_content_charset() or "utf-8"
+            decoded_text = payload.decode(charset, errors="replace")
+            if msg.get_content_type() == "text/plain":
+                text_parts.append(decoded_text)
+            elif msg.get_content_type() == "text/html":
+                html_parts.append(decoded_text)
+    if text_parts:
+        raw = "\n".join(text_parts)
+    else:
+        html_raw = "\n".join(html_parts)
+        m = re.search(r'<body[^>]*>(.*?)</body>', html_raw, re.DOTALL | re.IGNORECASE)
+        raw = m.group(1) if m else html_raw
+    raw = re.sub(r'<[^>]+>', '', raw)
+    raw = html.unescape(raw)
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    return "\n".join(lines)
+
+
+def list_mailboxes(imap):
+    typ, data = imap.list()
+    if typ != "OK":
+        print("Failed to list mailboxes", file=sys.stderr)
+        return
+    for line in data:
+        decoded = line.decode()
+        m = re.search(r'"([^"]+)"$', decoded)
+        name = m.group(1) if m else decoded
+        print(name)
+
+
+def get_attachments(msg):
+    attachments = []
+    for part in msg.walk():
+        cd = str(part.get("Content-Disposition", ""))
+        if cd and "attachment" in cd:
+            filename = part.get_filename()
+            if filename:
+                filename = decode_mime(filename)
+                payload = part.get_payload(decode=True) or b""
+                attachments.append((filename, len(payload)))
+    return attachments
+
+
+def print_email_summary(msg_id, msg, snippet=False):
+    subject = decode_mime(msg.get("Subject", ""))
+    from_ = decode_mime(msg.get("From", ""))
+    to = decode_mime(msg.get("To", ""))
+    date = msg.get("Date", "")
+    attachments = get_attachments(msg)
+    print(f"ID: {msg_id}")
+    print(f"Date: {date}")
+    print(f"From: {from_}")
+    print(f"To: {to}")
+    print(f"Subject: {subject}")
+    if attachments:
+        print(f"Attachments: {', '.join(f'{n} ({s} bytes)' for n, s in attachments)}")
+    else:
+        print(f"Attachments: None")
+    if snippet:
+        body = extract_body(msg)
+        snippet_text = body[:500]
+        print(f"Snippet: {snippet_text}")
+    print("-" * 80)
+
+
+def list_emails(imap, mailbox, limit, snippet):
+    imap.select(mailbox)
+    typ, data = imap.search(None, "ALL")
+    if typ != "OK" or not data or not data[0]:
+        print("No messages found")
+        return
+    ids = data[0].split()
+    ids = ids[::-1]
+    if limit:
+        ids = ids[:limit]
+    for msg_id in ids:
+        typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
+        if typ != "OK":
+            continue
+        for part in msg_data:
+            if isinstance(part, tuple):
+                msg = email.message_from_bytes(part[1])
+                print_email_summary(msg_id.decode(), msg, snippet)
+
+
+def fetch_email(imap, mailbox, msg_id):
+    imap.select(mailbox)
+    typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
+    if typ != "OK":
+        print(f"Failed to fetch {msg_id}", file=sys.stderr)
+        return
+    for part in msg_data:
+        if isinstance(part, tuple):
+            msg = email.message_from_bytes(part[1])
+            print(f"ID: {msg_id}")
+            print(f"Date: {msg.get('Date','')}")
+            print(f"From: {decode_mime(msg.get('From',''))}")
+            print(f"To: {decode_mime(msg.get('To',''))}")
+            print(f"Subject: {decode_mime(msg.get('Subject',''))}")
+            print(f"Attachments: {', '.join(n for n,_ in get_attachments(msg)) or 'None'}")
+            print("\n--- BODY ---\n")
+            print(extract_body(msg))
+            return
+
+
+def download_attachment(imap, mailbox, msg_id, attachment_name, out_dir):
+    imap.select(mailbox)
+    typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
+    if typ != "OK":
+        print(f"Failed to fetch {msg_id}", file=sys.stderr)
+        return
+    for part in msg_data:
+        if isinstance(part, tuple):
+            msg = email.message_from_bytes(part[1])
+            for part2 in msg.walk():
+                cd = str(part2.get("Content-Disposition", ""))
+                if cd and "attachment" in cd:
+                    filename = part2.get_filename()
+                    if filename:
+                        filename = decode_mime(filename)
+                        if filename.lower() == attachment_name.lower():
+                            payload = part2.get_payload(decode=True) or b""
+                            os.makedirs(out_dir, exist_ok=True)
+                            out_path = os.path.join(out_dir, filename)
+                            with open(out_path, "wb") as f:
+                                f.write(payload)
+                            print(f"Saved {filename} to {out_path}")
+                            return
+    print(f"Attachment {attachment_name} not found in message {msg_id}", file=sys.stderr)
+
+
+def search_emails(imap, mailbox, query, limit):
+    imap.select(mailbox)
+    typ, data = imap.search(None, query)
+    if typ != "OK" or not data or not data[0]:
+        print("No matching messages")
+        return
+    ids = data[0].split()
+    ids = ids[::-1]
+    if limit:
+        ids = ids[:limit]
+    for msg_id in ids:
+        typ, msg_data = imap.fetch(msg_id, "(BODY.PEEK[])")
+        if typ != "OK":
+            continue
+        for part in msg_data:
+            if isinstance(part, tuple):
+                msg = email.message_from_bytes(part[1])
+                print_email_summary(msg_id.decode(), msg, snippet=False)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generic IMAP LLM helper")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    p_list = subparsers.add_parser("list", help="List emails in mailbox")
+    p_list.add_argument("mailbox")
+    p_list.add_argument("--limit", type=int)
+    p_list.add_argument("--snippet", action="store_true")
+
+    p_mailboxes = subparsers.add_parser("mailboxes", help="List mailboxes")
+
+    p_fetch = subparsers.add_parser("fetch", help="Fetch email body")
+    p_fetch.add_argument("id")
+    p_fetch.add_argument("--mailbox", default="INBOX")
+
+    p_download = subparsers.add_parser("download", help="Download attachment")
+    p_download.add_argument("id")
+    p_download.add_argument("attachment")
+    p_download.add_argument("--mailbox", default="INBOX")
+    p_download.add_argument("--out", default=".")
+
+    p_search = subparsers.add_parser("search", help="Search emails (IMAP syntax, passed directly)")
+    p_search.add_argument("query", help="IMAP search criteria, e.g. FROM \"user@example.com\" SUBJECT \"invoice\"")
+    p_search.add_argument("--mailbox", default="INBOX")
+    p_search.add_argument("--limit", type=int)
+
+    args = parser.parse_args()
+    imap = get_connection()
+    try:
+        if args.command == "mailboxes":
+            list_mailboxes(imap)
+        elif args.command == "list":
+            list_emails(imap, args.mailbox, args.limit, args.snippet)
+        elif args.command == "fetch":
+            fetch_email(imap, args.mailbox, args.id)
+        elif args.command == "download":
+            download_attachment(imap, args.mailbox, args.id, args.attachment, args.out)
+        elif args.command == "search":
+            search_emails(imap, args.mailbox, args.query, args.limit)
+    finally:
+        try:
+            imap.logout()
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    main()

@@ -6,6 +6,19 @@ Use these shell commands to accomplish specific tasks.
 `bremote ARGS` - remote control a browser instance with playwright - see below
 `chromium-browser --remote-debugging-port=9222 --remote-allow-origins=*` - launch a browser instance with remote debugging on.
 `pi @file-1 @file-2 "Some prompt here"` - launch a sub-agent.
+`mail-agent ARGS` - IMAP email helper - see below.
+
+### `mail-agent` usage
+
+Requires the `IMAP_URL` environment variable (e.g. `imaps://user:pass@host`).
+
+`mail-agent mailboxes` - list mailboxes.
+`mail-agent list MAILBOX [--limit N] [--snippet]` - list emails in a mailbox.
+`mail-agent fetch ID [--mailbox INBOX]` - fetch email details and body.
+`mail-agent download ID ATTACHMENT [--mailbox INBOX] [--out DIR]` - download file.
+`mail-agent search QUERY [--mailbox INBOX] [--limit N]` - search emails.
+Note: `QUERY` must be a valid IMAP search string (e.g. `FROM "user@example.com"`
+or `SUBJECT "invoice"`).
 
 ### `bremote` usage
 
